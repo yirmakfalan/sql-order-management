@@ -1,0 +1,136 @@
+CREATE TABLE Customers (
+CustomerId INT PRIMARY KEY IDENTITY(1,1),
+Name_ NVARCHAR(100) NOT NULL,
+Email NVARCHAR(100) NOT NULL,
+Phone VARCHAR(20),
+Balance DECIMAL(18,2) NOT NULL DEFAULT 0,
+IsActive BIT NOT NULL DEFAULT 1,
+IsDeleted BIT NOT NULL DEFAULT 0,
+DeletedAt DATETIME NULL,
+CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE Products (
+ProductId INT PRIMARY KEY IDENTITY(1,1),
+Name_ NVARCHAR(100) NOT NULL,
+Category NVARCHAR(100) NOT NULL,
+CostPrice DECIMAL(18,2) NOT NULL,
+SalePrice DECIMAL(18,2) NOT NULL,
+IsActive BIT NOT NULL DEFAULT 1,
+IsDeleted BIT NOT NULL DEFAULT 0,
+DeletedAt DATETIME NULL,
+CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE Warehouses (
+WarehouseId INT PRIMARY KEY IDENTITY(1,1),
+WarehouseCode VARCHAR(20) NOT NULL UNIQUE,
+WarehouseName VARCHAR(100) NOT NULL,
+WarehouseType VARCHAR(50) NOT NULL, -- Main, Store, Distribution Center
+Capacity INT NOT NULL,
+Address NVARCHAR(255) NOT NULL,
+City NVARCHAR(50) NOT NULL,
+Country NVARCHAR(50),
+IsActive BIT NOT NULL DEFAULT 1,
+IsDeleted BIT NOT NULL DEFAULT 0,
+DeletedAt DATETIME NULL,
+CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE Stocks (
+ProductID INT NOT NULL,
+WarehouseID INT NOT NULL,
+Quantity DECIMAL(18,2) NOT NULL DEFAULT 0,
+
+PRIMARY KEY (ProductID, WarehouseID),
+
+CONSTRAINT CHK_Stock_Quantity 
+CHECK (Quantity >= 0),
+
+CONSTRAINT FK_Stock_Product
+FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE NO ACTION,
+
+CONSTRAINT FK_Stock_Warehouse
+FOREIGN KEY (WarehouseID) REFERENCES Warehouses(WarehouseID) ON DELETE NO ACTION
+);
+
+
+CREATE TABLE Orders(
+OrderId INT PRIMARY KEY IDENTITY(1,1),
+CustomerId INT NOT NULL,
+OrderDate DATETIME NOT NULL DEFAULT GETDATE(),
+Status TINYINT NOT NULL DEFAULT 0,
+TotalAmount DECIMAL(18,2)  NOT NULL DEFAULT 0,
+
+CONSTRAINT CHK_Orders_Status
+	CHECK (Status IN (0, 1, 2, 3)),
+	-- 0=Pending, 1=Confirmed, 2=Shipped, 3=Cancelled
+
+CONSTRAINT CHK_Orders_TotalAmount
+	CHECK (TotalAmount >= 0),
+
+CONSTRAINT FK_Orders_CustomerID
+	FOREIGN KEY (CustomerId) REFERENCES Customers(CustomerId) ON DELETE NO ACTION
+);
+
+
+CREATE TABLE OrderItems (
+OrderItemId INT IDENTITY(1,1) PRIMARY KEY,
+OrderId INT NOT NULL,
+ProductId INT NOT NULL,
+WarehouseId INT NOT NULL,
+Quantity DECIMAL(18,2) NOT NULL,
+UnitPrice DECIMAL(18,2) NOT NULL,
+LineTotal DECIMAL(18,2)	NOT NULL DEFAULT 0,
+
+CONSTRAINT CK_OrderItems_Quantity CHECK (Quantity > 0),
+CONSTRAINT CK_OrderItems_UnitPrice CHECK (UnitPrice >= 0),
+
+CONSTRAINT FK_OrderItems_Order 
+	FOREIGN KEY (OrderId) REFERENCES Orders(OrderId) ON DELETE NO ACTION,
+
+CONSTRAINT FK_OrderItems_Product
+	FOREIGN KEY (ProductId) REFERENCES Products(ProductId) ON DELETE NO ACTION,
+
+CONSTRAINT FK_OrderItems_Warehouse
+	FOREIGN KEY (WarehouseID) REFERENCES Warehouses(WarehouseID) ON DELETE NO ACTION
+);
+
+CREATE TABLE PaymentMethods (
+PaymentMethodID INT PRIMARY KEY IDENTITY(1,1),
+MethodName NVARCHAR(50) NOT NULL UNIQUE,
+IsActive BIT NOT NULL DEFAULT 1
+);
+
+CREATE TABLE PaymentStatuses(
+    PaymentStatusId TINYINT PRIMARY KEY,
+    StatusName VARCHAR(50) NOT NULL UNIQUE,
+    IsFinal BIT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE Payments (
+PaymentID INT PRIMARY KEY IDENTITY(1,1),
+CustomerID INT NOT NULL,
+OrderID INT  NULL,
+PaymentStatusId TINYINT NOT NULL DEFAULT 1,  -- 1=Pending
+PaymentMethodID INT NOT NULL,    -- PaymentMethods'a baðlanacak
+Amount DECIMAL(18,2) NOT NULL,
+TransactionNo VARCHAR(100) NULL,
+PaymentDate DATETIME NOT NULL DEFAULT GETDATE(),
+
+CONSTRAINT CHK_Payments_Amount
+	CHECK (Amount > 0),
+
+CONSTRAINT FK_Payments_Customer
+	FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID) ON DELETE NO ACTION,
+
+CONSTRAINT FK_Payments_Order
+	FOREIGN KEY (OrderID) REFERENCES Orders(OrderID) ON DELETE NO ACTION,
+
+CONSTRAINT FK_Payments_Method
+	FOREIGN KEY (PaymentMethodID) REFERENCES PaymentMethods(PaymentMethodID) ON DELETE NO ACTION,
+
+CONSTRAINT FK_Payments_Status
+    FOREIGN KEY (PaymentStatusId) REFERENCES PaymentStatuses(PaymentStatusID) ON DELETE NO ACTION
+);
+
